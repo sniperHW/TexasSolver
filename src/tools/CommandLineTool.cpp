@@ -1,9 +1,6 @@
 //
 // Created by bytedance on 7.6.21.
 //
-//#include "net/Connection.h"
-//#include "net/wpacket.h"
-//#include "net/KendyNet.h"
 #include <winsock2.h>
 #include <WinBase.h>
 #include <Winerror.h>
@@ -99,65 +96,6 @@ void split(const string& s, char c,
     }
 }
 
-/*
-void on_packet(struct connection *c,rpacket_t packet);
-void on_disconnect(struct connection *c);
-
-void _on_flushOk (struct connection *c) {
-    closesocket(c->socket.sock);
-}
-
-void connect2Server(CommandLineTool *clt,HANDLE iocp,std::string host,int port) {
-    cout << "2fasfasfd" << endl;
-    SOCKET sock;
-    for(;;){
-        sock = connect(host,port);
-        if(sock != INVALID_SOCKET) {
-            break;
-        }else {
-            ::Sleep(1000);
-        }
-    }
-    connection *c = connection_create(sock,on_packet,on_disconnect);
-    c->iocp = iocp;
-    c->ud = clt;
-    c->host = host.c_str();
-    c->port = port;
-    c->_on_flushOk = _on_flushOk;
-	Bind2Engine(iocp,(Socket_t)c);
-    connection_recv(c);
-}
-
-
-
-void on_packet(struct connection *c,rpacket_t packet) {
-    cout << "on_packet" << endl;
-    CommandLineTool *clt = (CommandLineTool*)c->ud;
-    uint32_t len = 0;
-    const void *ptr = rpacket_read_binary(packet,&len);
-    string commandsStr = string((const char *)ptr,len); 
-    vector<string> commands;
-    split(commandsStr,'\n',commands);
-    cout << "cmd count:" << commands.size() << endl;
-    for(auto cmd:commands){
-        if(cmd != ""){
-            clt->processCommand(cmd,c);
-        }
-    }
-    rpacket_destroy(&packet);
-    //recv again
-    connection_recv(c);
-}
-
-void on_disconnect(struct connection *c) {
-     CommandLineTool *clt = (CommandLineTool*)c->ud;
-     HANDLE iocp = c->iocp;
-     string host = c->host;
-     int port = c->port;
-     connect2Server(clt,iocp,host,port);
-}*/
-
-
 int recvPacket(SOCKET sock,char *buff,int bufflen) {
     int data = 0;
     for(;;){
@@ -235,39 +173,7 @@ void CommandLineTool::startNet(std::string host,int port) {
         }        
     }
 
-    free(buff);
-
-
-    /*HANDLE iocp = CreateNetEngine(1);
-    cout << "1" << endl;
-
-    //连接调度服务器
-    //connect2Server(this,iocp,host,port);
-    {
-        SOCKET sock;
-        for(;;){
-            sock = connect(host,port);
-            if(sock != INVALID_SOCKET) {
-                break;
-            }else {
-                ::Sleep(1000);
-            }
-        }
-        connection *c = connection_create(sock,on_packet,on_disconnect);
-        c->iocp = iocp;
-        c->ud = this;
-        c->host = host.c_str();
-        c->port = port;
-        c->_on_flushOk = _on_flushOk;
-	    Bind2Engine(iocp,(Socket_t)c);
-        connection_recv(c);
-    }
-
-    cout << "3" << endl;
-    for(;;){
-        RunEngine(iocp,50);
-    }*/
-    
+    free(buff);    
 }
 
 void CommandLineTool::startWorking() {
