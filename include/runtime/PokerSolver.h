@@ -44,6 +44,7 @@ public:
             int threads
             );
     void dump_strategy(string dump_file,int dump_rounds);
+    std::string dump_strategy_str(int dump_rounds);
 private:
     shared_ptr<Dic5Compairer> compairer;
     Deck deck;

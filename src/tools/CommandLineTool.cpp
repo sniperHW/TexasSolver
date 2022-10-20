@@ -1,7 +1,15 @@
 //
 // Created by bytedance on 7.6.21.
 //
+//#include "net/Connection.h"
+//#include "net/wpacket.h"
+//#include "net/KendyNet.h"
+#include <winsock2.h>
+#include <WinBase.h>
+#include <Winerror.h>
 #include "tools/CommandLineTool.h"
+
+
 
 CommandLineTool::CommandLineTool(string mode,string resource_dir) {
     string suits = "c,d,h,s";
@@ -53,6 +61,215 @@ CommandLineTool::CommandLineTool(string mode,string resource_dir) {
      */
 }
 
+SOCKET connect(std::string host,int port) {
+    cout << "connect " << host << ":" << port << endl;
+	struct sockaddr_in remote; 
+	SOCKET sock=socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (sock == INVALID_SOCKET)
+	{
+		printf("\nError occurred while opening socket: %d.", WSAGetLastError());
+		return INVALID_SOCKET;
+	}
+	remote.sin_family = AF_INET;
+	remote.sin_port = htons((u_short)port);
+	remote.sin_addr.s_addr = inet_addr(host.c_str());
+    int ret = connect(sock, (struct sockaddr *)&remote, sizeof(remote));
+	if( ret >=0 )
+	{
+		return sock;
+	} else {
+        cout << "connect failed " << ret << "," << WSAGetLastError() << endl; 
+        closesocket(sock);
+        return INVALID_SOCKET;
+    }    
+}
+
+void split(const string& s, char c,
+           vector<string>& v) {
+    string::size_type i = 0;
+    string::size_type j = s.find(c);
+
+    while (j != string::npos) {
+        v.push_back(s.substr(i, j-i));
+        i = ++j;
+        j = s.find(c, j);
+
+        if (j == string::npos)
+            v.push_back(s.substr(i, s.length()));
+    }
+}
+
+/*
+void on_packet(struct connection *c,rpacket_t packet);
+void on_disconnect(struct connection *c);
+
+void _on_flushOk (struct connection *c) {
+    closesocket(c->socket.sock);
+}
+
+void connect2Server(CommandLineTool *clt,HANDLE iocp,std::string host,int port) {
+    cout << "2fasfasfd" << endl;
+    SOCKET sock;
+    for(;;){
+        sock = connect(host,port);
+        if(sock != INVALID_SOCKET) {
+            break;
+        }else {
+            ::Sleep(1000);
+        }
+    }
+    connection *c = connection_create(sock,on_packet,on_disconnect);
+    c->iocp = iocp;
+    c->ud = clt;
+    c->host = host.c_str();
+    c->port = port;
+    c->_on_flushOk = _on_flushOk;
+	Bind2Engine(iocp,(Socket_t)c);
+    connection_recv(c);
+}
+
+
+
+void on_packet(struct connection *c,rpacket_t packet) {
+    cout << "on_packet" << endl;
+    CommandLineTool *clt = (CommandLineTool*)c->ud;
+    uint32_t len = 0;
+    const void *ptr = rpacket_read_binary(packet,&len);
+    string commandsStr = string((const char *)ptr,len); 
+    vector<string> commands;
+    split(commandsStr,'\n',commands);
+    cout << "cmd count:" << commands.size() << endl;
+    for(auto cmd:commands){
+        if(cmd != ""){
+            clt->processCommand(cmd,c);
+        }
+    }
+    rpacket_destroy(&packet);
+    //recv again
+    connection_recv(c);
+}
+
+void on_disconnect(struct connection *c) {
+     CommandLineTool *clt = (CommandLineTool*)c->ud;
+     HANDLE iocp = c->iocp;
+     string host = c->host;
+     int port = c->port;
+     connect2Server(clt,iocp,host,port);
+}*/
+
+
+int recvPacket(SOCKET sock,char *buff,int bufflen) {
+    int data = 0;
+    for(;;){
+        int pkLen = 0;
+        if(data >= 4) {
+            pkLen = ntohl(*(unsigned int*)buff);
+            cout << "data:" << data << " pkLen:" << pkLen << endl;
+            if(data > 0 && pkLen > 0) {
+                if(data >= pkLen+4) {
+                    //接收到完整的包
+                    cout << "got packet" << endl;
+                    return pkLen+4;
+                }else if(pkLen+4 > bufflen) {
+                    //包太大
+                    return -1;
+                }
+            }
+        }
+
+        int n = ::recv(sock,&buff[data],bufflen-data,0);
+        cout << "recv:" << n << endl;
+        if(n<=0) {
+            return n;
+        } else {
+            data += n;
+        }
+    }
+} 
+
+int32_t InitNetSystem()
+{
+	int32_t nResult;
+	WSADATA wsaData;
+	nResult = WSAStartup(MAKEWORD(2,2), &wsaData);
+	if (NO_ERROR != nResult)
+	{
+		printf("\nError occurred while executing WSAStartup().");
+		return -1; //error
+	}
+	return 0;
+}
+
+void CommandLineTool::startNet(std::string host,int port) {
+    assert(0 == InitNetSystem());
+    int buffLen = 1024*1024*10;
+    char *buff = (char*)malloc(buffLen);
+
+    for(;;){
+        SOCKET sock;
+        for(;;){
+            sock = connect(host,port);
+            if(sock != INVALID_SOCKET) {
+                break;
+            }else {
+                ::Sleep(1000);
+            }
+        }
+
+        int n = recvPacket(sock,buff,buffLen);
+        if(n <= 0){
+            closesocket(sock);
+            continue;
+        } else {
+            int pkLen = ntohl(*(unsigned int*)buff);
+            string commandsStr = string(&buff[4],pkLen); 
+            vector<string> commands;
+            split(commandsStr,'\n',commands);
+            cout << "cmd count:" << commands.size() << endl;
+            for(auto cmd:commands){
+                if(cmd != ""){
+                    this->processCommand(cmd,&sock);
+                }
+            }
+            closesocket(sock);
+        }        
+    }
+
+    free(buff);
+
+
+    /*HANDLE iocp = CreateNetEngine(1);
+    cout << "1" << endl;
+
+    //连接调度服务器
+    //connect2Server(this,iocp,host,port);
+    {
+        SOCKET sock;
+        for(;;){
+            sock = connect(host,port);
+            if(sock != INVALID_SOCKET) {
+                break;
+            }else {
+                ::Sleep(1000);
+            }
+        }
+        connection *c = connection_create(sock,on_packet,on_disconnect);
+        c->iocp = iocp;
+        c->ud = this;
+        c->host = host.c_str();
+        c->port = port;
+        c->_on_flushOk = _on_flushOk;
+	    Bind2Engine(iocp,(Socket_t)c);
+        connection_recv(c);
+    }
+
+    cout << "3" << endl;
+    for(;;){
+        RunEngine(iocp,50);
+    }*/
+    
+}
+
 void CommandLineTool::startWorking() {
     string input_line;
     while(cin) {
@@ -72,23 +289,7 @@ void CommandLineTool::execFromFile(string input_file){
 
 }
 
-void split(const string& s, char c,
-           vector<string>& v) {
-    string::size_type i = 0;
-    string::size_type j = s.find(c);
-
-    while (j != string::npos) {
-        v.push_back(s.substr(i, j-i));
-        i = ++j;
-        j = s.find(c, j);
-
-        if (j == string::npos)
-            v.push_back(s.substr(i, s.length()));
-    }
-}
-
-
-void CommandLineTool::processCommand(string input) {
+void CommandLineTool::processCommand(string input,void *sock) {
     vector<string> contents;
     split(input,' ',contents);
     if(contents.size() == 0) contents = {input};
@@ -168,8 +369,18 @@ void CommandLineTool::processCommand(string input) {
                 this->thread_number
         );
     }else if(command == "dump_result"){
-        string output_file = paramstr;
-        this->ps.dump_strategy(output_file,this->dump_rounds);
+        string dump = this->ps.dump_strategy_str(this->dump_rounds);
+        cout << "dump_result" << endl;
+        if(sock != nullptr){
+            const char *ptr = dump.c_str(); 
+            char *buff = (char *)malloc(dump.length()+4);   
+            *(unsigned int*)buff = htonl(dump.length());
+            memcpy(&buff[4],dump.c_str(),dump.length());
+            ::send(*(SOCKET*)sock,buff,dump.length()+4,0);
+            free(buff);
+        }
+        //string output_file = paramstr;
+        //this->ps.dump_strategy(output_file,this->dump_rounds);
     }else if(command == "set_dump_rounds"){
         this->dump_rounds = stoi(paramstr);
     }else{

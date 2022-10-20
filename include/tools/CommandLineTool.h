@@ -8,6 +8,9 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+//#include <winsock2.h>
+//#include <WinBase.h>
+//#include <Winerror.h>
 #include "runtime/PokerSolver.h"
 
 using namespace std;
@@ -16,8 +19,13 @@ public:
     CommandLineTool(string mode,string resource_dir);
     void startWorking();
     void execFromFile(string input_file);
-    void processCommand(string input);
+    void startNet(std::string host,int port);
+    void processCommand(string input,void *sock = nullptr);
 private:
+
+
+
+
     enum Mode{
         HOLDEM,
         SHORTDECK

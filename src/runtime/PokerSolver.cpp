@@ -2,6 +2,7 @@
 // Created by Xuefeng Huang on 2020/2/6.
 //
 
+#include <sstream>
 #include "runtime/PokerSolver.h"
 
 PokerSolver::PokerSolver() {
@@ -89,6 +90,14 @@ void PokerSolver::dump_strategy(string dump_file,int dump_rounds) {
     fileWriter << dump_json;
     fileWriter.flush();
     fileWriter.close();
+}
+
+
+string PokerSolver::dump_strategy_str(int dump_rounds) {
+    json dump_json = this->solver->dumps(false,dump_rounds);
+    ostringstream ss;
+    ss << dump_json;
+    return ss.str();
 }
 
 const shared_ptr<GameTree> &PokerSolver::getGameTree() const {

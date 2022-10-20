@@ -85,6 +85,8 @@ add_subdirectory(ext/pybind11)
 
 include_directories(include)
 
+#include_directories(src)
+
 AUX_SOURCE_DIRECTORY(src lib_src)
 AUX_SOURCE_DIRECTORY(src/compairer lib_src)
 AUX_SOURCE_DIRECTORY(src/nodes lib_src)
@@ -93,7 +95,7 @@ AUX_SOURCE_DIRECTORY(src/tools lib_src)
 AUX_SOURCE_DIRECTORY(src/trainable lib_src)
 AUX_SOURCE_DIRECTORY(src/solver lib_src)
 AUX_SOURCE_DIRECTORY(src/runtime lib_src)
-AUX_SOURCE_DIRECTORY(src/net lib_src)
+#AUX_SOURCE_DIRECTORY(src/net lib_src)
 
 AUX_SOURCE_DIRECTORY(include lib_src)
 AUX_SOURCE_DIRECTORY(include/compairer lib_src)
