@@ -76,7 +76,7 @@ func main() {
 	avalabileSolver := map[netgo.Socket]struct{}{}
 	//监听texasSolver连接
 	{
-		_, serve, err := netgo.ListenTCP("tcp", "localhost:8080", func(conn *net.TCPConn) {
+		_, serve, err := netgo.ListenTCP("tcp", ":8080", func(conn *net.TCPConn) {
 			log.Println("solver connect")
 			go func() {
 				texasSolver := netgo.NewTcpSocket(conn)
@@ -99,16 +99,14 @@ func main() {
 					return k
 				}
 			} else {
-				mtx.Unlock()
-				time.Sleep(time.Second)
-				mtx.Lock()
+				return nil
 			}
 		}
 	}
 
 	//监听客户端连接
 	{
-		_, serve, _ := netgo.ListenTCP("tcp", "localhost:8081", func(conn *net.TCPConn) {
+		_, serve, _ := netgo.ListenTCP("tcp", ":8081", func(conn *net.TCPConn) {
 			log.Println("client connect")
 			go func() {
 				cli := netgo.NewTcpSocket(conn, &Codec{buff: make([]byte, 1024*1024*10)})
@@ -119,6 +117,10 @@ func main() {
 					return
 				}
 				solver := getSolver()
+				if solver == nil {
+					return
+				}
+
 				defer solver.Close()
 				if _, err = solver.Send(request); err != nil {
 					return
@@ -131,7 +133,7 @@ func main() {
 					if response, err := solver.Recv(); err != nil {
 						log.Println("1", err)
 						return
-						
+
 					} else {
 						totalRecv += len(response)
 						log.Println("send resp ", len(response), totalRecv)

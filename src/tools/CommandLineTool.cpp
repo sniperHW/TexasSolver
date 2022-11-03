@@ -163,7 +163,7 @@ void CommandLineTool::startNet(std::string host,int port) {
             string commandsStr = string(&buff[4],pkLen); 
             vector<string> commands;
             split(commandsStr,'\n',commands);
-            cout << "cmd count:" << commands.size() << endl;
+            cout << "----cmd count:" << commands.size() << endl;
             for(auto cmd:commands){
                 if(cmd != ""){
                     this->processCommand(cmd,&sock);
@@ -210,6 +210,7 @@ void CommandLineTool::processCommand(string input,void *sock) {
     }else if(command == "set_board"){
         this->board = paramstr;
         vector<string> board_str_arr = string_split(board,',');
+        cout << board_str_arr.size() << "," << paramstr;
         if(board_str_arr.size() == 3){
             this->current_round = 1;
         }else if(board_str_arr.size() == 4){
@@ -282,7 +283,16 @@ void CommandLineTool::processCommand(string input,void *sock) {
             char *buff = (char *)malloc(dump.length()+4);   
             *(unsigned int*)buff = htonl(dump.length());
             memcpy(&buff[4],dump.c_str(),dump.length());
-            ::send(*(SOCKET*)sock,buff,dump.length()+4,0);
+            int offset = 0;
+	        int total = dump.length() + 4;
+            for(;offset < total;){
+                int n = ::send(*(SOCKET*)sock,&buff[offset],total-offset,0);
+                if(n<=0){
+                    break;
+                } else {
+                    offset += n;
+                }
+            }
             free(buff);
         }
         //string output_file = paramstr;
